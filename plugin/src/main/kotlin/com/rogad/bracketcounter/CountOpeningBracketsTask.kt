@@ -31,6 +31,29 @@ abstract class CountOpeningBracketsTask : DefaultTask() {
 
     @TaskAction
     fun count() {
+        val brackets: Set<Char> = openingBrackets.get().toSet()
+        val roots = sourceRoots.files
+        val report = reportFile.get().asFile
+        report.parentFile?.mkdirs()
 
+        val lines = sourceFiles.files
+            .map { file ->
+                val relativePath = roots
+                    .firstOrNull { root -> file.startsWith(root) }
+                    ?.let { root -> root.toPath().relativize(file.toPath()).toString() }
+                    ?: file.name
+                val count = file.readText().count { ch -> ch in brackets }
+                relativePath.replace('\\', '/') to count
+            }
+            .sortedBy { it.first }
+
+        report.bufferedWriter().use { writer ->
+            for ((path, count) in lines) {
+                writer.write("$path: $count")
+                writer.newLine()
+            }
+        }
+
+        logger.lifecycle("Bracket report written to ${report.absolutePath} (${lines.size} files)")
     }
 }
