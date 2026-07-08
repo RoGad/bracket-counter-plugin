@@ -32,18 +32,13 @@ abstract class CountOpeningBracketsTask : DefaultTask() {
     @TaskAction
     fun count() {
         val brackets: Set<Char> = openingBrackets.get().toSet()
-        val roots = sourceRoots.files
         val report = reportFile.get().asFile
         report.parentFile?.mkdirs()
 
         val lines = sourceFiles.files
             .map { file ->
-                val relativePath = roots
-                    .firstOrNull { root -> file.startsWith(root) }
-                    ?.let { root -> root.toPath().relativize(file.toPath()).toString() }
-                    ?: file.name
                 val count = file.readText().count { ch -> ch in brackets }
-                relativePath.replace('\\', '/') to count
+                relativePathOf(file) to count
             }
             .sortedBy { it.first }
 
@@ -55,5 +50,13 @@ abstract class CountOpeningBracketsTask : DefaultTask() {
         }
 
         logger.lifecycle("Bracket report written to ${report.absolutePath} (${lines.size} files)")
+    }
+
+    private fun relativePathOf(file: java.io.File): String {
+        return sourceRoots.files
+            .firstOrNull { root -> file.startsWith(root) }
+            ?.let { root -> root.toPath().relativize(file.toPath()).toString() }
+            ?.replace('\\', '/')
+            ?: file.name
     }
 }
