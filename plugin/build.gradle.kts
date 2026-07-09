@@ -10,6 +10,18 @@ repositories {
     mavenCentral()
 }
 
+dependencies {
+    testImplementation(gradleTestKit())
+    testImplementation(platform("org.junit:junit-bom:5.13.4"))
+    testImplementation(kotlin("test-junit5"))
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.test {
+    useJUnitPlatform()
+}
+
 gradlePlugin {
     plugins {
         create("bracketCounter") {
