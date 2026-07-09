@@ -55,4 +55,17 @@ class BracketCounterPluginFunctionalTest {
         val report = dir.resolve("build/bracket-counter/opening-brackets.txt")
         assertTrue(report.exists(), "report file must exist")
     }
+
+    @Test
+    fun `report contains per-file opening bracket count`(@TempDir dir: File) {
+        writeJavaProject(dir)
+
+        runner(dir, "countOpeningBrackets").build()
+
+        val report = dir.resolve("build/bracket-counter/opening-brackets.txt").readText()
+        assertTrue(
+            report.contains("com/example/Hello.java: 3"),
+            "unexpected report:\n$report",
+        )
+    }
 }
