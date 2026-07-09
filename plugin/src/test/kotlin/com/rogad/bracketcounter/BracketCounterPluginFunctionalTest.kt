@@ -1,7 +1,12 @@
 package com.rogad.bracketcounter
 
 import org.gradle.testkit.runner.GradleRunner
+import org.gradle.testkit.runner.TaskOutcome
+import org.junit.jupiter.api.io.TempDir
 import java.io.File
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class BracketCounterPluginFunctionalTest {
 
@@ -35,5 +40,19 @@ class BracketCounterPluginFunctionalTest {
             }
             """.trimIndent(),
         )
+    }
+
+    @Test
+    fun `report is generated for java sources`(@TempDir dir: File) {
+        writeJavaProject(dir)
+
+        val result = runner(dir, "countOpeningBrackets").build()
+
+        assertEquals(
+            TaskOutcome.SUCCESS,
+            result.task(":countOpeningBrackets")?.outcome,
+        )
+        val report = dir.resolve("build/bracket-counter/opening-brackets.txt")
+        assertTrue(report.exists(), "report file must exist")
     }
 }

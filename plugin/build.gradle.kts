@@ -12,7 +12,10 @@ repositories {
 
 dependencies {
     testImplementation(gradleTestKit())
-    testImplementation(kotlin("test"))
+    testImplementation(platform("org.junit:junit-bom:5.13.4"))
+    testImplementation(kotlin("test-junit5"))
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 tasks.test {
