@@ -14,3 +14,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "bracket-counter-plugin"
+include("sample-lib")
