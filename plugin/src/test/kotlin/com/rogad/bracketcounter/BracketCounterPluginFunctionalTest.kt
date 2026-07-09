@@ -1,0 +1,110 @@
+package com.rogad.bracketcounter
+
+import org.gradle.testkit.runner.GradleRunner
+import org.gradle.testkit.runner.TaskOutcome
+import org.junit.jupiter.api.assertNull
+import org.junit.jupiter.api.io.TempDir
+import java.io.File
+import java.util.zip.ZipFile
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
+
+class BracketCounterPluginFunctionalTest {
+
+    private fun runner(projectDir: File, vararg args: String): GradleRunner =
+        GradleRunner.create()
+            .withProjectDir(projectDir)
+            .withPluginClasspath()
+            .withArguments(*args)
+            .forwardOutput()
+
+    private fun writeJavaProject(dir: File) {
+        dir.resolve("settings.gradle.kts")
+            .writeText("rootProject.name = \"consumer\"")
+        dir.resolve("build.gradle.kts").writeText(
+            """
+            plugins {
+                `java-library`
+                id("com.rogad.bracket-counter")
+            }
+            """.trimIndent(),
+        )
+        val src = dir.resolve("src/main/java/com/example").apply { mkdirs() }
+        src.resolve("Hello.java").writeText(
+            """
+            package com.example;
+
+            public class Hello {
+                public String greet(String name) {
+                    return "Hi, " + name + "!";
+                }
+            }
+            """.trimIndent(),
+        )
+    }
+
+    @Test
+    fun `report is generated for java sources`(@TempDir dir: File) {
+        writeJavaProject(dir)
+
+        val result = runner(dir, "countOpeningBrackets").build()
+
+        assertEquals(
+            TaskOutcome.SUCCESS,
+            result.task(":countOpeningBrackets")?.outcome,
+        )
+        val report = dir.resolve("build/bracket-counter/opening-brackets.txt")
+        assertTrue(report.exists(), "report file must exist")
+    }
+
+    @Test
+    fun `report contains per-file opening bracket count`(@TempDir dir: File) {
+        writeJavaProject(dir)
+
+        runner(dir, "countOpeningBrackets").build()
+
+        val report = dir.resolve("build/bracket-counter/opening-brackets.txt").readText()
+        assertTrue(
+            report.contains("com/example/Hello.java: 3"),
+            "unexpected report:\n$report",
+        )
+    }
+
+    @Test
+    fun `report is packaged into the jar`(@TempDir dir: File) {
+        writeJavaProject(dir)
+
+        runner(dir, "jar").build()
+
+        val jar = dir.resolve("build/libs/consumer.jar")
+        assertTrue(jar.exists(), "jar must be built")
+
+        ZipFile(jar).use { zip ->
+            val entry = zip.getEntry("opening-brackets.txt")
+            assertNotNull(entry, "report must be inside the jar")
+            val content = zip.getInputStream(entry).bufferedReader().readText()
+            assertTrue(content.contains("com/example/Hello.java: 3"))
+        }
+    }
+
+    @Test
+    fun `plugin is inert for non-java modules`(@TempDir dir: File) {
+        dir.resolve("settings.gradle.kts")
+            .writeText("rootProject.name = \"empty\"")
+        dir.resolve("build.gradle.kts").writeText(
+            """
+            plugins {
+                base
+                id("com.rogad.bracket-counter")
+            }
+            """.trimIndent(),
+        )
+
+        val result = runner(dir, "tasks", "--all").build()
+
+        assertNull(result.task(":countOpeningBrackets"))
+        assertTrue(result.output.contains("BUILD SUCCESSFUL"))
+    }
+}
