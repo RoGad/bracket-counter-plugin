@@ -2,6 +2,7 @@ package com.rogad.bracketcounter
 
 import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.TaskOutcome
+import org.junit.jupiter.api.assertNull
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 import java.util.zip.ZipFile
@@ -86,5 +87,24 @@ class BracketCounterPluginFunctionalTest {
             val content = zip.getInputStream(entry).bufferedReader().readText()
             assertTrue(content.contains("com/example/Hello.java: 3"))
         }
+    }
+
+    @Test
+    fun `plugin is inert for non-java modules`(@TempDir dir: File) {
+        dir.resolve("settings.gradle.kts")
+            .writeText("rootProject.name = \"empty\"")
+        dir.resolve("build.gradle.kts").writeText(
+            """
+            plugins {
+                base
+                id("com.rogad.bracket-counter")
+            }
+            """.trimIndent(),
+        )
+
+        val result = runner(dir, "tasks", "--all").build()
+
+        assertNull(result.task(":countOpeningBrackets"))
+        assertTrue(result.output.contains("BUILD SUCCESSFUL"))
     }
 }
