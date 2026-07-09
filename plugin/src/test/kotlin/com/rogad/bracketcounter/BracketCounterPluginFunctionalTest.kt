@@ -4,8 +4,10 @@ import org.gradle.testkit.runner.GradleRunner
 import org.gradle.testkit.runner.TaskOutcome
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
+import java.util.zip.ZipFile
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class BracketCounterPluginFunctionalTest {
@@ -67,5 +69,22 @@ class BracketCounterPluginFunctionalTest {
             report.contains("com/example/Hello.java: 3"),
             "unexpected report:\n$report",
         )
+    }
+
+    @Test
+    fun `report is packaged into the jar`(@TempDir dir: File) {
+        writeJavaProject(dir)
+
+        runner(dir, "jar").build()
+
+        val jar = dir.resolve("build/libs/consumer.jar")
+        assertTrue(jar.exists(), "jar must be built")
+
+        ZipFile(jar).use { zip ->
+            val entry = zip.getEntry("opening-brackets.txt")
+            assertNotNull(entry, "report must be inside the jar")
+            val content = zip.getInputStream(entry).bufferedReader().readText()
+            assertTrue(content.contains("com/example/Hello.java: 3"))
+        }
     }
 }
